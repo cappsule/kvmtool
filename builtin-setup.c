@@ -123,7 +123,7 @@ static const char *guestfs_symlinks[] = {
 
 #ifdef CONFIG_GUEST_INIT
 static int extract_file(const char *guestfs_name, const char *filename,
-			const void *data, const void *_size)
+			const void *data, const size_t size)
 {
 	char path[PATH_MAX];
 	int fd, ret;
@@ -138,7 +138,7 @@ static int extract_file(const char *guestfs_name, const char *filename,
 		die("Fail to setup %s", path);
 	}
 
-	ret = xwrite(fd, data, (size_t)_size);
+	ret = xwrite(fd, data, size);
 	if (ret < 0)
 		die("Fail to setup %s", path);
 	close(fd);
@@ -147,24 +147,27 @@ static int extract_file(const char *guestfs_name, const char *filename,
 }
 
 extern char _binary_guest_init_start;
-extern char _binary_guest_init_size;
+extern char _binary_guest_init_end;
 extern char _binary_guest_pre_init_start;
-extern char _binary_guest_pre_init_size;
+extern char _binary_guest_pre_init_end;
 
 int kvm_setup_guest_init(const char *guestfs_name)
 {
+	ptrdiff_t size;
 	int err;
 
 #ifdef CONFIG_GUEST_PRE_INIT
+	size = &_binary_guest_pre_init_end - &_binary_guest_pre_init_start;
 	err = extract_file(guestfs_name, "virt/pre_init",
 				&_binary_guest_pre_init_start,
-				&_binary_guest_pre_init_size);
+				size);
 	if (err)
 		return err;
 #endif
+	size = &_binary_guest_init_end - &_binary_guest_init_start;
 	err = extract_file(guestfs_name, "virt/init",
 				&_binary_guest_init_start,
-				&_binary_guest_init_size);
+				size);
 	return err;
 }
 #else
